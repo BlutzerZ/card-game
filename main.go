@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -19,35 +18,36 @@ func main() {
 		},
 	}
 
+	connections := make(map[*websocket.Conn]string)
+
 	r := gin.Default()
 
 	r.GET("/ws", func(c *gin.Context) {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		defer conn.Close()
+		defer ws.Close()
 
 		id := uuid.New().String()
-		err = conn.WriteMessage(websocket.TextMessage, []byte(id))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+
+		connections[ws] = id
 
 		for {
-			messageType, p, err := conn.ReadMessage()
+			messageType, p, err := ws.ReadMessage()
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 
-			fmt.Println(string(p))
-			err = conn.WriteMessage(messageType, p)
-			if err != nil {
-				fmt.Println(err)
-				return
+			for conn := range connections {
+				message := []byte("[" + id + "]: " + string(p))
+				err = conn.WriteMessage(messageType, message)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
 			}
 		}
 	})
