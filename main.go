@@ -12,6 +12,7 @@ func main() {
 
 	cardhub.CreateCard()
 	r.GET("/ws/:roomID", cardhub.GameWS)
+	r.GET("/ws/", cardhub.GameWS)
 	// ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	// if err != nil {
 	// 	fmt.Println(err)

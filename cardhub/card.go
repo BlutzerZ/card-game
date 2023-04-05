@@ -31,8 +31,6 @@ func generate_room_id() string {
 	return result
 }
 
-var connections = make(map[*websocket.Conn]string)
-
 type Player struct {
 	ID         string
 	Connection *websocket.Conn
@@ -65,13 +63,15 @@ func GameWS(c *gin.Context) {
 		// create new room
 		room.ID = generate_room_id()
 		room.Player = append(room.Player, player)
-
+		fmt.Println(room.ID)
 		rooms = append(rooms, room)
 	} else {
 		for _, room := range rooms {
+			fmt.Println(roomID, room.ID)
 			if roomID == room.ID {
 				// add player to room
 				room.Player = append(room.Player, player)
+				rooms = append(rooms, room)
 			}
 		}
 	}
@@ -83,8 +83,15 @@ func GameWS(c *gin.Context) {
 			return
 		}
 
-		for conn := range connections {
-			err = conn.WriteMessage(messageType, p)
+		// matching room
+		for _, r := range rooms {
+			if room.ID == r.ID {
+				room = r
+			}
+		}
+		for _, player := range room.Player {
+			message := []byte(fmt.Sprintf("[%s]: %s", player.ID, string(p)))
+			err = player.Connection.WriteMessage(messageType, message)
 			if err != nil {
 				fmt.Println(err)
 				return
