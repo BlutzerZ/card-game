@@ -37,8 +37,9 @@ type Player struct {
 }
 
 type Room struct {
-	ID     string
-	Player []Player
+	ID        string
+	Player    []Player
+	isPlaying bool
 }
 
 var rooms []Room
@@ -55,12 +56,14 @@ func GameWS(c *gin.Context) {
 	var player Player
 	player.ID = uuid.New().String()
 	player.Connection = ws
+	fmt.Println(player.ID)
 
 	// Check room id of url
 	var room Room
 	roomID := c.Param("roomID")
 	if roomID == "" {
 		// create new room
+		room.isPlaying = false
 		room.ID = generate_room_id()
 		room.Player = append(room.Player, player)
 		fmt.Println(room.ID)
@@ -69,45 +72,63 @@ func GameWS(c *gin.Context) {
 
 		rooms = append(rooms, room)
 	} else {
-		// isFound := false
-		for _, room := range rooms {
+		isFound := false
+		for i, r := range rooms {
 			fmt.Println(roomID, room.ID)
-			if roomID == room.ID {
+			if roomID == r.ID {
+				// cbeck if game is already start
+				if r.isPlaying {
+					ws.WriteMessage(websocket.TextMessage, []byte("game already start"))
+
+					return
+				}
+
 				// add player to room
-				room.Player = append(room.Player, player)
-				rooms = append(rooms, room)
-				// isFound = true
+				r.Player = append(r.Player, player)
+				isFound = true
+				room = r
+				rooms[i] = room
 				break
 			}
 		}
 
-		// if !(isFound) {
-		// 	return
-		// }
+		if !(isFound) {
+			return
+		}
 
 	}
 
 	for {
 		messageType, p, err := ws.ReadMessage()
-		fmt.Println(string(p))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
 		// matching room
-		fmt.Println(room.ID)
 		for _, r := range rooms {
-			fmt.Println(room.ID, r.ID)
 			if room.ID == r.ID {
 				room = r
+				break
 			}
 		}
-		fmt.Println(room)
-		for _, player := range room.Player {
-			fmt.Println(player)
+
+		// check if leader start game
+		if string(p) == "/start" {
+			room.isPlaying = true
+			for _, playerReceiver := range room.Player {
+				message := []byte(fmt.Sprintf("[%s]: %s", player.ID, string(p)))
+				err = playerReceiver.Connection.WriteMessage(messageType, message)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+		}
+
+		for _, playerReceiver := range room.Player {
 			message := []byte(fmt.Sprintf("[%s]: %s", player.ID, string(p)))
-			err = player.Connection.WriteMessage(messageType, message)
+			err = playerReceiver.Connection.WriteMessage(messageType, message)
 			if err != nil {
 				fmt.Println(err)
 				return

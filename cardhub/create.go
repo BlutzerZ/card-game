@@ -2,7 +2,9 @@ package cardhub
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
+	"time"
 )
 
 var cardList = []string{"b", "b_2", "b_4"}
@@ -25,4 +27,21 @@ func CreateCard() {
 	for _, card := range cardList {
 		fmt.Println(card)
 	}
+}
+
+func GetRandomCard(totalCard int) []string {
+	rand.Seed(time.Now().UnixNano())
+
+	var result []string
+	for i := 0; i < totalCard; i++ {
+		r := string(cardList[rand.Intn(len(cardList))])
+		result = append(result, r)
+	}
+
+	return result
+}
+
+func main() {
+	CreateCard()
+	fmt.Println(GetRandomCard(6))
 }
