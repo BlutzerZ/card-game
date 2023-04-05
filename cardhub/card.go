@@ -64,32 +64,48 @@ func GameWS(c *gin.Context) {
 		room.ID = generate_room_id()
 		room.Player = append(room.Player, player)
 		fmt.Println(room.ID)
+		message := []byte(fmt.Sprintf("[NEW=ROOM] Your invite link is %s", room.ID))
+		ws.WriteMessage(websocket.TextMessage, message)
+
 		rooms = append(rooms, room)
 	} else {
+		// isFound := false
 		for _, room := range rooms {
 			fmt.Println(roomID, room.ID)
 			if roomID == room.ID {
 				// add player to room
 				room.Player = append(room.Player, player)
 				rooms = append(rooms, room)
+				// isFound = true
+				break
 			}
 		}
+
+		// if !(isFound) {
+		// 	return
+		// }
+
 	}
 
 	for {
 		messageType, p, err := ws.ReadMessage()
+		fmt.Println(string(p))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
 		// matching room
+		fmt.Println(room.ID)
 		for _, r := range rooms {
+			fmt.Println(room.ID, r.ID)
 			if room.ID == r.ID {
 				room = r
 			}
 		}
+		fmt.Println(room)
 		for _, player := range room.Player {
+			fmt.Println(player)
 			message := []byte(fmt.Sprintf("[%s]: %s", player.ID, string(p)))
 			err = player.Connection.WriteMessage(messageType, message)
 			if err != nil {
