@@ -33,6 +33,7 @@ func generate_room_id() string {
 
 type Player struct {
 	ID         string
+	Deck       []string
 	Connection *websocket.Conn
 }
 
@@ -79,7 +80,6 @@ func GameWS(c *gin.Context) {
 				// cbeck if game is already start
 				if r.isPlaying {
 					ws.WriteMessage(websocket.TextMessage, []byte("game already start"))
-
 					return
 				}
 
@@ -115,15 +115,34 @@ func GameWS(c *gin.Context) {
 
 		// check if leader start game
 		if string(p) == "/start" {
-			room.isPlaying = true
-			for _, playerReceiver := range room.Player {
-				message := []byte(fmt.Sprintf("[%s]: %s", player.ID, string(p)))
-				err = playerReceiver.Connection.WriteMessage(messageType, message)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
+			room, err = StartGame(room)
+			if err != nil {
+				fmt.Println(err)
+				return
 			}
+			fmt.Println(room.isPlaying)
+
+			for _, playerReceiver := range room.Player {
+				fmt.Println(playerReceiver.Deck)
+			}
+			// // set playing mode to true
+			// room.isPlaying = true
+			// for _, playerReceiver := range room.Player {
+			// 	// get random card to player
+			// 	playerReceiver.Deck = GetRandomCard(7)
+			// 	fmt.Println(playerReceiver.Deck)
+
+			// 	deckJSON, err := json.Marshal(playerReceiver.Deck)
+			// 	if err != nil {
+			// 		fmt.Println(err)
+			// 		return
+			// 	}
+			// 	err = playerReceiver.Connection.WriteMessage(websocket.TextMessage, deckJSON)
+			// 	if err != nil {
+			// 		fmt.Println(err)
+			// 		return
+			// 	}
+			// }
 		}
 
 		for _, playerReceiver := range room.Player {
