@@ -1,7 +1,6 @@
 package cardhub
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -39,10 +38,21 @@ type Player struct {
 	Connection *websocket.Conn
 }
 
+type PlayerQueue struct {
+	Player []Player
+	Turn   int
+}
+
+type OnGame struct {
+	Queue       PlayerQueue
+	CurrentCard string
+}
+
 type Room struct {
 	ID        string
 	Player    []Player
 	isPlaying bool
+	Game      OnGame
 }
 
 var rooms []Room
@@ -101,56 +111,51 @@ func GameWS(c *gin.Context) {
 	}
 
 	for {
+		// read message ==============================
 		messageType, p, err := ws.ReadMessage()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		// matching room
-		for _, r := range rooms {
+		// matching room =====================
+		indexRoom := 0
+		for i, r := range rooms {
 			if room.ID == r.ID {
 				room = r
+				indexRoom = i
 				break
 			}
 		}
 
 		// check if leader start game
-		if string(p) == "/start" {
+		if strings.Contains(string(p), "/start") && !room.isPlaying {
 			room, err = StartGame(room)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			fmt.Println(room.isPlaying)
-
+			// for _, p := range card
 			for _, playerReceiver := range room.Player {
 				fmt.Println(playerReceiver.Deck)
 			}
+			fmt.Println(room.Game.Queue.Player[room.Game.Queue.Turn].ID)
+			rooms[indexRoom] = room
+			continue
 		}
 
+		// if player throw card
 		if strings.Contains(string(p), "/throw") {
 			fmt.Println("try throwing card")
 
 			card := strings.Split(string(p), " ")
-			fmt.Println(card)
-			for ip, p := range room.Player {
-				if p.ID == player.ID {
-					for i, deckCard := range p.Deck {
-						fmt.Println(card[1], deckCard)
-						if card[1] == deckCard {
-							room.Player[ip].Deck = append(room.Player[ip].Deck[:i], room.Player[ip].Deck[i+1:]...)
-							deckJSON, err := json.Marshal(room.Player[ip].Deck)
-							if err != nil {
-								fmt.Println(err)
-								return
-							}
-							player.Connection.WriteMessage(websocket.TextMessage, deckJSON)
-						}
-					}
-				}
+			room, err = Throwcard(card, player, room)
+			if err != nil {
+				fmt.Println(err)
+				return
 			}
-
+			rooms[indexRoom] = room
+			continue
 		}
 
 		for _, playerReceiver := range room.Player {
