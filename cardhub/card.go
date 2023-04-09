@@ -1,9 +1,11 @@
 package cardhub
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -125,24 +127,30 @@ func GameWS(c *gin.Context) {
 			for _, playerReceiver := range room.Player {
 				fmt.Println(playerReceiver.Deck)
 			}
-			// // set playing mode to true
-			// room.isPlaying = true
-			// for _, playerReceiver := range room.Player {
-			// 	// get random card to player
-			// 	playerReceiver.Deck = GetRandomCard(7)
-			// 	fmt.Println(playerReceiver.Deck)
+		}
 
-			// 	deckJSON, err := json.Marshal(playerReceiver.Deck)
-			// 	if err != nil {
-			// 		fmt.Println(err)
-			// 		return
-			// 	}
-			// 	err = playerReceiver.Connection.WriteMessage(websocket.TextMessage, deckJSON)
-			// 	if err != nil {
-			// 		fmt.Println(err)
-			// 		return
-			// 	}
-			// }
+		if strings.Contains(string(p), "/throw") {
+			fmt.Println("try throwing card")
+
+			card := strings.Split(string(p), " ")
+			fmt.Println(card)
+			for ip, p := range room.Player {
+				if p.ID == player.ID {
+					for i, deckCard := range p.Deck {
+						fmt.Println(card[1], deckCard)
+						if card[1] == deckCard {
+							room.Player[ip].Deck = append(room.Player[ip].Deck[:i], room.Player[ip].Deck[i+1:]...)
+							deckJSON, err := json.Marshal(room.Player[ip].Deck)
+							if err != nil {
+								fmt.Println(err)
+								return
+							}
+							player.Connection.WriteMessage(websocket.TextMessage, deckJSON)
+						}
+					}
+				}
+			}
+
 		}
 
 		for _, playerReceiver := range room.Player {

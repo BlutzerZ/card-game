@@ -12,10 +12,16 @@ func StartGame(room Room) (Room, error) {
 	room.isPlaying = true
 	for i, playerReceiver := range room.Player {
 		// get random card to player
-		room.Player[i].Deck = GetRandomCard(7)
+		deck := GetRandomCard(7)
+		room.Player[i].Deck = deck
+		fmt.Println(room.Player[i].Deck)
+		fmt.Println("=======")
+
+		fmt.Println(i)
+
 		// fmt.Println(playerReceiver.Deck)
 
-		deckJSON, err := json.Marshal(playerReceiver.Deck)
+		deckJSON, err := json.Marshal(room.Player[i].Deck)
 		if err != nil {
 			fmt.Println(err)
 			return room, err
@@ -27,8 +33,10 @@ func StartGame(room Room) (Room, error) {
 		}
 
 	}
-	fmt.Println(room)
-	fmt.Println("=======")
+
+	for i, _ := range room.Player {
+		fmt.Println(room.Player[i])
+	}
 
 	return room, nil
 }

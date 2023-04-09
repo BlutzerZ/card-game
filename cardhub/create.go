@@ -1,9 +1,10 @@
 package cardhub
 
 import (
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 	"strconv"
+	"time"
 )
 
 var cardList = []string{"b", "b_2", "b_4"}
@@ -29,16 +30,26 @@ func CreateCard() {
 }
 
 func GetRandomCard(totalCard int) []string {
-	// var seed int64
 
-	// // rand.Read(((*[8]byte)(unsafe.Pointer(&seed)))[:])
-	// // rand.Seed(seed)
+	// // r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// for i := range cardList {
+	// 	b := make([]byte, 8)
+	// 	rand.Read(b)
+	// 	seed := binary.BigEndian.Uint64(b)
+	// 	r := rand.New(rand.NewSource(int64(seed) ^ time.Now().UnixNano()))
+	// 	// Generate nilai acak untuk indeks pertukaran
+	// 	j := r.Intn(len(cardList))
+	// 	cardList[i], cardList[j] = cardList[j], cardList[i]
+	// }
 
-	var result []string
-	for i := 0; i < totalCard; i++ {
-		r := string(cardList[rand.Intn(len(cardList))])
-		result = append(result, r)
-	}
+	newCards := make([]string, len(cardList))
+	copy(newCards, cardList)
 
-	return result
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
+	r.Shuffle(len(newCards), func(i, j int) { newCards[i], newCards[j] = newCards[j], newCards[i] })
+
+	resultCard := newCards[:7]
+
+	return resultCard
 }
