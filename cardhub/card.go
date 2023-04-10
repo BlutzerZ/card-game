@@ -1,6 +1,7 @@
 package cardhub
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -156,6 +157,32 @@ func GameWS(c *gin.Context) {
 			}
 			rooms[indexRoom] = room
 			continue
+		}
+
+		if strings.Contains(string(p), "/take") {
+			for ip, p := range room.Player {
+				if player.ID == p.ID && player.ID == room.Game.Queue.Player[room.Game.Queue.Turn].ID {
+					room.Player[ip].Deck = append(room.Player[ip].Deck, GetRandomCard(1)...)
+					// send all card with new card
+					deckJSON, err := json.Marshal(room.Player[ip].Deck)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					err = p.Connection.WriteMessage(websocket.TextMessage, deckJSON)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					// queue next
+					if room.Game.Queue.Turn+1 == len(room.Game.Queue.Player) {
+						room.Game.Queue.Turn = 0
+					} else {
+						room.Game.Queue.Turn += 1
+					}
+					rooms[indexRoom] = room
+				}
+			}
 		}
 
 		for _, playerReceiver := range room.Player {

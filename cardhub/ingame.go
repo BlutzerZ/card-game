@@ -3,6 +3,7 @@ package cardhub
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,6 +16,7 @@ func StartGame(room Room) (Room, error) {
 	room.Game.CurrentCard = GetRandomCard(1)[0]
 
 	for i, playerReceiver := range room.Player {
+
 		// get random card to player
 		deck := GetRandomCard(7)
 		room.Player[i].Deck = deck
@@ -28,6 +30,14 @@ func StartGame(room Room) (Room, error) {
 			return room, err
 		}
 		err = playerReceiver.Connection.WriteMessage(websocket.TextMessage, deckJSON)
+		if err != nil {
+			fmt.Println(err)
+			return room, err
+		}
+
+		// send current deck to player
+		message := []byte(fmt.Sprintf("[Current-Card]: %s", room.Game.CurrentCard))
+		err = playerReceiver.Connection.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
 			fmt.Println(err)
 			return room, err
@@ -49,21 +59,34 @@ func Throwcard(card []string, player Player, room Room) (Room, error) {
 		if player.ID == p.ID && player.ID == room.Game.Queue.Player[room.Game.Queue.Turn].ID {
 			for i, deckCard := range p.Deck {
 				// check card in deck or not
-				if card[1] == deckCard {
+				// card is match the current card
+				splitedCurrentCard := strings.Split(room.Game.CurrentCard, "_")
+				if card[1] == deckCard && (strings.Contains(string(card[1]), splitedCurrentCard[0]) || strings.Contains(string(card[1]), splitedCurrentCard[1])) {
 					room.Player[ip].Deck = append(room.Player[ip].Deck[:i], room.Player[ip].Deck[i+1:]...) // remove card
 					deckJSON, err := json.Marshal(room.Player[ip].Deck)
 					if err != nil {
 						return room, err
 					}
 
+					// update current card
+					room.Game.CurrentCard = card[1]
 					// queue next
-
 					if room.Game.Queue.Turn+1 == len(room.Game.Queue.Player) {
 						room.Game.Queue.Turn = 0
 					} else {
 						room.Game.Queue.Turn += 1
 					}
 					player.Connection.WriteMessage(websocket.TextMessage, deckJSON)
+
+					// Notify all player the currnent card
+					for _, p := range room.Player {
+						message := []byte(fmt.Sprintf("[Current-Card]: %s", room.Game.CurrentCard))
+						err := p.Connection.WriteMessage(websocket.TextMessage, message)
+						if err != nil {
+							fmt.Println(err)
+							return room, err
+						}
+					}
 					break
 				}
 			}
